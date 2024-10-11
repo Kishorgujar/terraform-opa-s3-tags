@@ -45,6 +45,12 @@ jobs:
       - name: Install dependencies
         uses: hashicorp/setup-terraform@v2
         
+      - name: Install OPA
+        run: |
+          wget https://openpolicyagent.org/downloads/v0.41.0/opa_linux_amd64 -O opa
+          chmod +x opa
+          sudo mv opa /usr/local/bin/opa
+        
       - name: Terraform Init
         run: |
           terraform init -upgrade
@@ -90,6 +96,12 @@ jobs:
           
       - name: Install dependencies
         uses: hashicorp/setup-terraform@v2
+        
+      - name: Install OPA
+        run: |
+          wget https://openpolicyagent.org/downloads/v0.41.0/opa_linux_amd64 -O opa
+          chmod +x opa
+          sudo mv opa /usr/local/bin/opa
         
       - name: Terraform Init
         run: |
