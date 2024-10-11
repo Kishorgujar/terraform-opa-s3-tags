@@ -1,6 +1,6 @@
 terraform {
   backend "s3" {
-    bucket         = "statebuc241011"  # Replace with your actual S3 bucket name
+    bucket         = "bucket241011"  # Replace with your actual S3 bucket name
     key            = "terraform.tfstate"
     region         = "ap-south-1"
   }
@@ -18,7 +18,7 @@ provider "aws" {
 }
 
 resource "aws_s3_bucket" "my_bucket" {
-  bucket = "bucket241011"
+  bucket = "Mainbucket241011"
   
   tags = {
     Environment = "Testing"  # Example of a tag for testing
