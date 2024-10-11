@@ -58,7 +58,7 @@ jobs:
       - name: Terraform Init with S3 Backend
         run: |
           terraform init -backend-config="bucket=bucket241011" \
-                         -backend-config="terraform.tfstate" \
+                         -backend-config="key=terraform.tfstate" \
                          -backend-config="region=${{ github.event.inputs.region }}" \
                          -upgrade
 
