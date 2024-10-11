@@ -75,8 +75,11 @@ jobs:
 
       - name: OPA Policy Check
         run: |
-          opa eval --data policies/s3_tag_policy.rego --input tfplan.json "data.terraform.deny"
-
+          opa eval --data policies/s3_tag_policy.rego --input tfplan.json "data.terraform.deny" > result.json
+          if [[ $(jq '.result[0].expressions[0].value' result.json) == "true" ]]; then
+            echo "Policy violation detected!"
+            exit 1
+          fi
       - name: Terraform Apply
         run: |
           terraform apply -auto-approve ./tfplan
