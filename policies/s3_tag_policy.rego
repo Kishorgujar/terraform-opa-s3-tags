@@ -7,7 +7,7 @@ allow {
     input.operation != "PutBucketTagging"
 }
 
-# Allow operation if trying to modify tags but they match the required values
+# Allow operation if trying to modify tags and they match the required values
 allow {
     input.operation == "PutBucketTagging"
     input.tags["Environment"] == "DevOps"
