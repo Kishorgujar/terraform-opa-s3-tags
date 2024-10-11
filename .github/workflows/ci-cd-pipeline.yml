@@ -9,7 +9,7 @@ on:
         required: false
         type: boolean
       region:
-        description: 'Which region would want to deploy to'
+        description: 'Which region you want to deploy to'
         default: 'ap-south-1'
         required: false
         type: string
@@ -42,40 +42,41 @@ jobs:
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_DEFAULT_REGION }}
           
-      - name: Install dependencies
+      - name: Install Terraform
         uses: hashicorp/setup-terraform@v2
 
       - name: Clear Terraform Plugin Cache
         run: |
           rm -rf ~/.terraform.d/plugin-cache
-          
+
       - name: Install OPA
         run: |
           wget https://openpolicyagent.org/downloads/v0.41.0/opa_linux_amd64 -O opa
           chmod +x opa
           sudo mv opa /usr/local/bin/opa
         
-      - name: Terraform Init
+      - name: Terraform Init with S3 Backend
         run: |
-          terraform init -upgrade
-          
+          terraform init -backend-config="bucket=bucket241011" \
+                         -backend-config="terraform.tfstate" \
+                         -backend-config="region=${{ github.event.inputs.region }}" \
+                         -upgrade
+
       - name: Terraform Validate
-        run: |
-          terraform validate
-          
+        run: terraform validate
+
       - name: Terraform Plan
         id: plan
         run: |
           terraform plan -out=./tfplan -json > tfplan.json
-          
+
       - name: Debug tfplan.json
-        run: |
-          cat tfplan.json  # Print the contents of tfplan.json to the logs
-          
+        run: cat tfplan.json  # Print the contents of tfplan.json to the logs
+
       - name: OPA Policy Check
         run: |
           opa eval --data policies/s3_tag_policy.rego --input tfplan.json "data.terraform.deny"
-          
+
       - name: Terraform Apply
         run: |
           terraform apply -auto-approve ./tfplan
@@ -90,15 +91,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        
+
       - name: Set up AWS Creds
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_DEFAULT_REGION }}
-          
-      - name: Install dependencies
+
+      - name: Install Terraform
         uses: hashicorp/setup-terraform@v2
         
       - name: Install OPA
@@ -106,15 +107,16 @@ jobs:
           wget https://openpolicyagent.org/downloads/v0.41.0/opa_linux_amd64 -O opa
           chmod +x opa
           sudo mv opa /usr/local/bin/opa
-        
-      - name: Terraform Init
+
+      - name: Terraform Init with S3 Backend
         run: |
-          terraform init -upgrade
-          
-      - name: Terraform Plan
-        run: |
-          terraform plan -destroy -out=./tfplan
-          
-      - name: Terraform Apply
-        run: |
-          terraform apply -auto-approve ./tfplan
+          terraform init -backend-config="bucket=bucket241011" \
+                         -backend-config="key=terraform.tfstate" \
+                         -backend-config="region=${{ github.event.inputs.region }}" \
+                         -upgrade
+
+      - name: Terraform Plan (Destroy)
+        run: terraform plan -destroy -out=./tfplan
+
+      - name: Terraform Apply (Destroy)
+        run: terraform apply -auto-approve ./tfplan
