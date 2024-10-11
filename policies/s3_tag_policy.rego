@@ -1,14 +1,9 @@
 package terraform
 
+# Deny rule for S3 bucket tag modifications
 deny {
-    input.resource_changes[_].type == "aws_s3_bucket"
-    input.resource_changes[_].change.actions[_] == "update"
-    input.resource_changes[_].change.after.tags["Environment"] != input.resource_changes[_].change.before.tags["Environment"]
+    input.resource_type == "aws_s3_bucket"  # Check if the resource is an S3 bucket
+    input.change["tags"] != input.original["tags"]  # Compare new tags with original tags
 }
 
-deny {
-    input.resource_changes[_].type == "aws_s3_bucket"
-    input.resource_changes[_].change.actions[_] == "update"
-    input.resource_changes[_].change.after.tags["Project"] != input.resource_changes[_].change.before.tags["Project"]
-}
-
+# You can add additional rules here as needed
