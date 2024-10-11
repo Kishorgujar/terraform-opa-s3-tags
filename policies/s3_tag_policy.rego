@@ -1,21 +1,14 @@
 package terraform
 
-default allow = false
-default deny = false
-
-# Example original tags; adjust to match your actual configuration
-original_tags = {
-    "Environment": "AWS",
-    "Project": "CICD"
-}
+default allow = true
 
 # Deny rule for S3 bucket tag modifications
 deny {
     input.resource_type == "aws_s3_bucket"  # Check if the resource is an S3 bucket
-    input.change["tags"] != original_tags  # Compare new tags with original tags
+    input.change["tags"] != input.original["tags"]  # Compare new tags with original tags
 }
 
-# Allow rule for S3 bucket creation
+# Allow rule for specific S3 bucket tag values
 allow {
     some r  # Iterate over resource changes
     input.resource_changes[r].address == "aws_s3_bucket.my_bucket"  # Match the bucket address
