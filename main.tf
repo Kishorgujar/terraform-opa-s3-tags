@@ -18,7 +18,7 @@ provider "aws" {
 }
 
 resource "aws_s3_bucket" "my_bucket" {
-  bucket = "Mainbucket241011"
+  bucket = "mainbucket241011"
   
   tags = {
     Environment = "Testing"  # Example of a tag for testing
