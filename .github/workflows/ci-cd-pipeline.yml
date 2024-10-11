@@ -1,0 +1,88 @@
+name: "Security_Catalog Deployment"
+on:
+  workflow_dispatch:
+    inputs:
+      destroy:
+        description: 'Whether to destroy the infra components'
+        default: false
+        required: false
+        type: boolean
+      region:
+        description: 'Which region would want to deploy to'
+        default: 'ap-south-1'
+        required: false
+        type: string
+  push:
+    branches:
+      - main
+      - scp
+
+defaults:
+  run:
+    shell: bash
+    working-directory: ./
+
+jobs:
+  terraform-create:
+    if: ${{ github.event.inputs.destroy == 'false' }}
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
+      AWS_DEFAULT_REGION: ${{ github.event.inputs.region }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up AWS Creds
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+      - name: Install dependencies
+        uses: hashicorp/setup-terraform@v2
+      - name: Terraform Init
+        run: |
+          terraform init -upgrade
+      - name: Terraform Validate
+        run: |
+          terraform validate
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan -out=./tfplan -json > tfplan.json
+      - name: OPA Policy Check
+        run: |
+          opa eval --data s3_tag_policy.rego --input tfplan.json "data.terraform.deny"
+      - name: Terraform Apply
+        run: |
+          terraform apply -auto-approve ./tfplan
+
+  terraform-destroy:
+    if: ${{ github.event.inputs.destroy == 'true' }}
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
+      AWS_DEFAULT_REGION: ${{ github.event.inputs.region }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up AWS Creds
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+      - name: Install dependencies
+        uses: hashicorp/setup-terraform@v2
+      - name: Terraform Init
+        run: |
+          terraform init -upgrade
+      - name: Terraform Plan
+        run: |
+          terraform plan -destroy -out=./tfplan
+      - name: Terraform Apply
+        run: |
+          terraform apply -auto-approve ./tfplan
+
