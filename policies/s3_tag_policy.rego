@@ -7,8 +7,14 @@ allow {
     input.operation != "PutBucketTagging"
 }
 
-# Deny operation if trying to modify tags and they do not match the required values
+# Allow operation if trying to modify tags but they match the required values
 allow {
     input.operation == "PutBucketTagging"
     input.tags["Environment"] == "DevOps"
+}
+
+# Deny operation if trying to modify tags and they do not match the required values
+deny {
+    input.operation == "PutBucketTagging"
+    input.tags["Environment"] != "DevOps"
 }
