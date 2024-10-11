@@ -74,12 +74,17 @@ jobs:
         run: cat tfplan.json  # Print the contents of tfplan.json to the logs
 
       - name: OPA Policy Check
+        id: opa_check
         run: |
           opa eval --data policies/s3_tag_policy.rego --input tfplan.json "data.terraform.deny" > result.json
+          cat result.json  # Print the OPA evaluation result for debugging
           if [[ $(jq '.result[0].expressions[0].value' result.json) == "true" ]]; then
             echo "Policy violation detected!"
-            exit 1
+            exit 1  # Exit the workflow with an error if policy denies
+          else
+            echo "No policy violation detected."
           fi
+
       - name: Terraform Apply
         run: |
           terraform apply -auto-approve ./tfplan
