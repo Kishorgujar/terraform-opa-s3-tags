@@ -1,10 +1,7 @@
-provider "aws" {
-  region = var.aws_region
-}
-
 resource "aws_s3_bucket" "my_bucket" {
   bucket = "bucket241011"
   tags = {
-   Environment = "production-updated"  # Change this tag to test policy
+    Environment = "production-updated"  # Example of updated tag for testing
     Project     = "my_project"
   }
+}
