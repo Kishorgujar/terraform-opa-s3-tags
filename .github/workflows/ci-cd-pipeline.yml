@@ -1,4 +1,5 @@
 name: "Security_Catalog Deployment"
+
 on:
   workflow_dispatch:
     inputs:
@@ -33,32 +34,38 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        
       - name: Set up AWS Creds
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_DEFAULT_REGION }}
+          
       - name: Install dependencies
         uses: hashicorp/setup-terraform@v2
-      - name: Install OPA
-        run: |
-          wget https://openpolicyagent.org/downloads/v0.48.0/opa_linux_amd64 -O opa
-          chmod +x opa
-          sudo mv opa /usr/local/bin/
+        
       - name: Terraform Init
         run: |
           terraform init -upgrade
+          
       - name: Terraform Validate
         run: |
           terraform validate
+          
       - name: Terraform Plan
         id: plan
         run: |
           terraform plan -out=./tfplan -json > tfplan.json
+          
+      - name: Debug tfplan.json
+        run: |
+          cat tfplan.json  # Print the contents of tfplan.json to the logs
+          
       - name: OPA Policy Check
         run: |
-          opa eval --data policies/s3_tag_policy.rego --input tfplan.json "data.terraform.deny"
+          opa eval --data s3_tag_policy.rego --input tfplan.json "data.terraform.deny"
+          
       - name: Terraform Apply
         run: |
           terraform apply -auto-approve ./tfplan
@@ -73,21 +80,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        
       - name: Set up AWS Creds
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_DEFAULT_REGION }}
+          
       - name: Install dependencies
         uses: hashicorp/setup-terraform@v2
+        
       - name: Terraform Init
         run: |
           terraform init -upgrade
+          
       - name: Terraform Plan
         run: |
           terraform plan -destroy -out=./tfplan
+          
       - name: Terraform Apply
         run: |
           terraform apply -auto-approve ./tfplan
-
