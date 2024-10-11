@@ -1,5 +1,6 @@
 package terraform
 
+# Default rule: allow all changes unless denied
 default allow = true
 
 # Deny rule for S3 bucket tag modifications
@@ -14,6 +15,8 @@ allow {
     input.resource_changes[r].address == "aws_s3_bucket.my_bucket"  # Match the bucket address
     input.resource_changes[r].change.after.tags["Environment"] == "production-updated"  # Tag must match
     input.resource_changes[r].change.after.tags["Project"] == "my_project"  # Tag must match
+}
+
 # Define the rule for denying changes based on tag conditions
 deny[{"msg": msg}] {
     input.resource_type == "aws_s3_bucket"  # Ensure we're checking an S3 bucket
@@ -29,10 +32,14 @@ required_tags = {
 
 # Check if the tags in the input match the required tags
 required_tags_match {
-    all_tags = input.resource.tags
-    # Ensure all required tags are present and have the correct values
-    required_tags[key] == all_tags[key]  # This ensures each required key matches the tag value
-    key = "Environment"                    # Key for required environment tag
-    key = "Project"                        # Key for required project tag
+    all_tags = input.resource_changes[_].change.after.tags  # Access the tags of the resource
+    required_tags[key] == all_tags[key]  # Ensure each required key matches the tag value
+    key = "Environment"                    # Check required environment tag
+}
+
+required_tags_match {
+    all_tags = input.resource_changes[_].change.after.tags  # Access the tags of the resource
+    required_tags[key] == all_tags[key]  # Ensure each required key matches the tag value
+    key = "Project"                        # Check required project tag
 }
 
