@@ -5,8 +5,6 @@ provider "aws" {
 resource "aws_s3_bucket" "my_bucket" {
   bucket = "bucket241011"
   tags = {
-    Environment = "Dev"
-    Project     = "OPA"
+   Environment = "production-updated"  # Change this tag to test policy
+    Project     = "my_project"
   }
-}
-
