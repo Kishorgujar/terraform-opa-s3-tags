@@ -70,7 +70,7 @@ jobs:
           
       - name: OPA Policy Check
         run: |
-          opa eval --data s3_tag_policy.rego --input tfplan.json "data.terraform.deny"
+          opa eval --data policies/s3_tag_policy.rego --input tfplan.json "data.terraform.deny"
           
       - name: Terraform Apply
         run: |
