@@ -35,18 +35,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         
-      - name: Set up AWS Credentials
+      - name: Set up AWS Creds
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
-          aws-region: ${{ github.event.inputs.region }}
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
           
       - name: Install Terraform
         uses: hashicorp/setup-terraform@v2
 
       - name: Clear Terraform Plugin Cache
-        run: rm -rf ~/.terraform.d/plugin-cache
+        run: |
+          rm -rf ~/.terraform.d/plugin-cache
 
       - name: Install OPA
         run: |
@@ -67,24 +68,14 @@ jobs:
       - name: Terraform Plan
         id: plan
         run: |
-          terraform plan -out=tfplan -json > tfplan.json || (echo "Terraform plan failed" && exit 1)
+          terraform plan -out=./tfplan -json > tfplan.json
 
       - name: Debug tfplan.json
-        run: |
-          if [ -f tfplan.json ]; then
-            cat tfplan.json
-          else
-            echo "tfplan.json not found."
-            exit 1
-          fi
+        run: cat tfplan.json  # Print the contents of tfplan.json to the logs
 
       - name: Debug Tags
         run: |
-          if [ -f tfplan.json ]; then
-            jq '.resource_changes[]? | {type: .type, tags: .change.after.tags}' tfplan.json || echo "No tags found or invalid JSON."
-          else
-            echo "tfplan.json not found."
-          fi
+          jq '.resource_changes[] | {type: .type, tags: .change.after.tags}' tfplan.json
 
       - name: OPA Policy Check
         id: opa_check
@@ -92,13 +83,7 @@ jobs:
           opa eval --data policies/s3_tag_policy.rego --input tfplan.json "data.s3_bucket.allow" > result.json
 
       - name: Print OPA Result
-        run: |
-          if [ -f result.json ]; then
-            cat result.json
-          else
-            echo "result.json not found."
-            exit 1
-          fi
+        run: cat result.json  # Print the OPA evaluation result for debugging
 
       - name: Ensure valid JSON
         run: |
@@ -111,13 +96,14 @@ jobs:
         run: |
           if [[ $(jq '.result[0].expressions[0].value' result.json) == "false" ]]; then
             echo "Policy violation detected!"
-            exit 1
+            exit 1  # Exit the workflow with an error if policy denies
           else
             echo "No policy violation detected."
           fi
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+        run: |
+          terraform apply -auto-approve ./tfplan
 
   terraform-destroy:
     if: ${{ github.event.inputs.destroy == 'true' }}
@@ -130,12 +116,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up AWS Credentials
+      - name: Set up AWS Creds
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
-          aws-region: ${{ github.event.inputs.region }}
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
 
       - name: Install Terraform
         uses: hashicorp/setup-terraform@v2
@@ -154,7 +140,7 @@ jobs:
                          -upgrade
 
       - name: Terraform Plan (Destroy)
-        run: terraform plan -destroy -out=tfplan
+        run: terraform plan -destroy -out=./tfplan
 
       - name: Terraform Apply (Destroy)
-        run: terraform apply -auto-approve tfplan
+        run: terraform apply -auto-approve ./tfplan
