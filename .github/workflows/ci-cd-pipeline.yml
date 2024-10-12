@@ -66,10 +66,17 @@ jobs:
 
       - name: Terraform Plan
         id: plan
-        run: terraform plan -out=tfplan -json
+        run: |
+          terraform plan -out=tfplan -json > tfplan.json || (echo "Terraform plan failed" && exit 1)
 
       - name: Debug tfplan.json
-        run: cat tfplan.json  # Print the contents of tfplan.json to the logs
+        run: |
+          if [ -f tfplan.json ]; then
+            cat tfplan.json
+          else
+            echo "tfplan.json not found."
+            exit 1
+          fi
 
       - name: Debug Tags
         run: |
@@ -81,7 +88,13 @@ jobs:
           opa eval --data policies/s3_tag_policy.rego --input tfplan.json "data.s3_bucket.allow" > result.json
 
       - name: Print OPA Result
-        run: cat result.json  # Print the OPA evaluation result for debugging
+        run: |
+          if [ -f result.json ]; then
+            cat result.json
+          else
+            echo "result.json not found."
+            exit 1
+          fi
 
       - name: Ensure valid JSON
         run: |
@@ -94,7 +107,7 @@ jobs:
         run: |
           if [[ $(jq '.result[0].expressions[0].value' result.json) == "false" ]]; then
             echo "Policy violation detected!"
-            exit 1  # Exit the workflow with an error if policy denies
+            exit 1
           else
             echo "No policy violation detected."
           fi
