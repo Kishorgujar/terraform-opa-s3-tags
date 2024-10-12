@@ -69,12 +69,13 @@ jobs:
         id: plan
         run: |
           terraform plan -out=tfplan -json
-          terraform show -json tfplan > tfplan.json
+          terraform show -json tfplan > tfplan.json || { echo "Failed to generate tfplan.json"; exit 1; }
 
       - name: Check tfplan.json Validity
         run: |
           if ! jq '.' tfplan.json; then
             echo "tfplan.json is not valid JSON."
+            cat tfplan.json || echo "Cannot display tfplan.json content."
             exit 1
           fi
 
@@ -127,32 +128,4 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up AWS Creds
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_DEFAULT_REGION }}
-
-      - name: Install Terraform
-        uses: hashicorp/setup-terraform@v2
-        
-      - name: Install OPA
-        run: |
-          wget https://openpolicyagent.org/downloads/v0.41.0/opa_linux_amd64 -O opa
-          chmod +x opa
-          sudo mv opa /usr/local/bin/opa
-
-      - name: Terraform Init with S3 Backend
-        run: |
-          terraform init -backend-config="bucket=bucket241011" \
-                         -backend-config="key=terraform.tfstate" \
-                         -backend-config="region=${{ github.event.inputs.region }}" \
-                         -upgrade
-
-      - name: Terraform Plan (Destroy)
-        run: terraform plan -destroy -out=tfplan
-
-      - name: Terraform Apply (Destroy)
-        run: |
-          terraform apply -auto-approve tfplan
+     
