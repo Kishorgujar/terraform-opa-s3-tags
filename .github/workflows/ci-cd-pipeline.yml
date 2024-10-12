@@ -74,8 +74,17 @@ jobs:
       - name: Check tfplan.json Validity
         run: |
           if ! jq '.' tfplan.json; then
-            echo "tfplan.json is not valid JSON."
+            echo "tfplan.json is not valid JSON. Check for errors in the Terraform plan."
             cat tfplan.json || echo "Cannot display tfplan.json content."
+            exit 1
+          fi
+
+      - name: Ensure tfplan.json is complete
+        run: |
+          # Check if tfplan.json ends with a valid structure
+          last_line=$(tail -n 1 tfplan.json)
+          if [[ ! $last_line =~ \}$ ]]; then
+            echo "tfplan.json seems incomplete. Last line: $last_line"
             exit 1
           fi
 
