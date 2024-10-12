@@ -35,19 +35,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         
-      - name: Set up AWS Creds
+      - name: Set up AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: ${{ github.event.inputs.region }}
           
       - name: Install Terraform
         uses: hashicorp/setup-terraform@v2
 
       - name: Clear Terraform Plugin Cache
-        run: |
-          rm -rf ~/.terraform.d/plugin-cache
+        run: rm -rf ~/.terraform.d/plugin-cache
 
       - name: Install OPA
         run: |
@@ -67,15 +66,14 @@ jobs:
 
       - name: Terraform Plan
         id: plan
-        run: |
-          terraform plan -out=./tfplan -json > tfplan.json
+        run: terraform plan -out=tfplan -json
 
       - name: Debug tfplan.json
         run: cat tfplan.json  # Print the contents of tfplan.json to the logs
 
       - name: Debug Tags
         run: |
-          jq '.resource_changes[] | {type: .type, tags: .change.after.tags}' tfplan.json
+          jq '.resource_changes[] | {type: .type, tags: .change.after.tags}' tfplan.json || echo "No tags found or invalid JSON."
 
       - name: OPA Policy Check
         id: opa_check
@@ -102,8 +100,7 @@ jobs:
           fi
 
       - name: Terraform Apply
-        run: |
-          terraform apply -auto-approve ./tfplan
+        run: terraform apply -auto-approve tfplan
 
   terraform-destroy:
     if: ${{ github.event.inputs.destroy == 'true' }}
@@ -116,12 +113,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up AWS Creds
+      - name: Set up AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: ${{ github.event.inputs.region }}
 
       - name: Install Terraform
         uses: hashicorp/setup-terraform@v2
@@ -140,7 +137,7 @@ jobs:
                          -upgrade
 
       - name: Terraform Plan (Destroy)
-        run: terraform plan -destroy -out=./tfplan
+        run: terraform plan -destroy -out=tfplan
 
       - name: Terraform Apply (Destroy)
-        run: terraform apply -auto-approve ./tfplan
+        run: terraform apply -auto-approve tfplan
