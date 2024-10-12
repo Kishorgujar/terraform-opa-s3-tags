@@ -121,10 +121,6 @@ jobs:
           echo "** Running Terraform Plan**"
           terraform plan -destroy -out=./tfplan
       
-      - name: Create Input JSON
-        run: |
-          echo '{"tag": "DevOps"}' > input.json  # Replace YourTagHere with the actual tag you want to check
-      
       - name: Install OPA
         run: |
           curl -L -o opa https://github.com/open-policy-agent/opa/releases/latest/download/opa_linux_amd64
