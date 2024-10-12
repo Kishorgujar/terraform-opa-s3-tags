@@ -73,6 +73,10 @@ jobs:
 
       - name: Check tfplan.json Validity
         run: |
+          if ! [ -s tfplan.json ]; then
+            echo "tfplan.json is empty or not created."
+            exit 1
+          fi
           if ! jq '.' tfplan.json; then
             echo "tfplan.json is not valid JSON. Check for errors in the Terraform plan."
             cat tfplan.json || echo "Cannot display tfplan.json content."
