@@ -1,4 +1,4 @@
-run-name: "Security_Catalog Deployment"
+name: "Security_Catalog Deployment"
 on:
   workflow_dispatch:
     inputs:
@@ -16,10 +16,12 @@ on:
     branches:
       - main
       - scp
+
 defaults:
   run:
     shell: bash
     working-directory: ./
+
 jobs:
   terraform-create:
     if: ${{ github.event.inputs.destroy == 'false' }}
@@ -31,14 +33,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      
       - name: Set up AWS Creds
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_DEFAULT_REGION }}
+      
       - name: Install dependencies
         uses: hashicorp/setup-terraform@v2
+      
       - name: Terraform Init
         run: |
           echo `pwd`
@@ -48,18 +53,22 @@ jobs:
           terraform -v
           echo "** Running Terraform Validate**"
           terraform validate
+      
       - name: Terraform Plan
         run: |
           echo "** Running Terraform Plan**"
           terraform plan -out=./tfplan
+      
       - name: Create Input JSON
         run: |
-          echo '{"tag": "YourTagHere"}' > input.json  # Replace YourTagHere with the actual tag you want to check
+          echo '{"tag": DevOps"}' > input.json  # Replace YourTagHere with the actual tag you want to check
+      
       - name: Install OPA
         run: |
           curl -L -o opa https://github.com/open-policy-agent/opa/releases/latest/download/opa_linux_amd64
           chmod +x opa
           sudo mv opa /usr/local/bin/
+      
       - name: OPA Policy Check
         run: |
           opa eval --data policies/s3_tag_policy.rego --input input.json "data.s3_tag_policy.allow" > result.json
@@ -70,10 +79,12 @@ jobs:
           else
             echo "No policy violation detected."
           fi
+      
       - name: Terraform Apply
         run: |
           echo "** Running Terraform Apply**"
           terraform apply -auto-approve ./tfplan
+  
   terraform-destroy:
     if: ${{ github.event.inputs.destroy == 'true' }}
     runs-on: ubuntu-latest
@@ -84,14 +95,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      
       - name: Set up AWS Creds
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_DEFAULT_REGION }}
+      
       - name: Install dependencies
         uses: hashicorp/setup-terraform@v2
+      
       - name: Terraform Init
         run: |
           echo `pwd`
@@ -101,18 +115,22 @@ jobs:
           terraform -v
           echo "** Running Terraform Validate**"
           terraform validate
+      
       - name: Terraform Plan
         run: |
           echo "** Running Terraform Plan**"
           terraform plan -destroy -out=./tfplan
+      
       - name: Create Input JSON
         run: |
-          echo '{"tag": "YourTagHere"}' > input.json  # Replace YourTagHere with the actual tag you want to check
+          echo '{"tag": "DevOps"}' > input.json  # Replace YourTagHere with the actual tag you want to check
+      
       - name: Install OPA
         run: |
           curl -L -o opa https://github.com/open-policy-agent/opa/releases/latest/download/opa_linux_amd64
           chmod +x opa
           sudo mv opa /usr/local/bin/
+      
       - name: OPA Policy Check
         run: |
           opa eval --data policies/s3_tag_policy.rego --input input.json "data.s3_tag_policy.allow" > result.json
@@ -123,6 +141,7 @@ jobs:
           else
             echo "No policy violation detected."
           fi
+      
       - name: Terraform Apply
         run: |
           echo "** Running Terraform Apply**"
