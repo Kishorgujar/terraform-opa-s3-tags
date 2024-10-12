@@ -1,5 +1,4 @@
-name: "Security_Catalog Deployment"
-
+run-name: "Security_Catalog Deployment"
 on:
   workflow_dispatch:
     inputs:
@@ -9,7 +8,7 @@ on:
         required: false
         type: boolean
       region:
-        description: 'Which region you want to deploy to'
+        description: 'Which region would want to deploy to'
         default: 'ap-south-1'
         required: false
         type: string
@@ -17,12 +16,17 @@ on:
     branches:
       - main
       - scp
-
+      # - distributed-ingress-egress
+      # - centralized-ew
+      # - vpc-flow-log
+      # - dc-vpn-optional
+  # pull_request:
+  #   branches:
+  #     - main
 defaults:
   run:
     shell: bash
     working-directory: ./
-
 jobs:
   terraform-create:
     if: ${{ github.event.inputs.destroy == 'false' }}
@@ -34,63 +38,35 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        
       - name: Set up AWS Creds
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_DEFAULT_REGION }}
-          
-      - name: Install Terraform
+      - name: Install dependencies
         uses: hashicorp/setup-terraform@v2
-
-      - name: Clear Terraform Plugin Cache
+      - name: Terraform Init
         run: |
-          rm -rf ~/.terraform.d/plugin-cache
-
-      - name: Install OPA
-        run: |
-          wget https://openpolicyagent.org/downloads/v0.41.0/opa_linux_amd64 -O opa
-          chmod +x opa
-          sudo mv opa /usr/local/bin/opa
-        
-      - name: Terraform Init with S3 Backend
-        run: |
-          terraform init -backend-config="bucket=bucket241011" \
-                         -backend-config="key=terraform.tfstate" \
-                         -backend-config="region=${{ github.event.inputs.region }}" \
-                         -upgrade
-
-      - name: Terraform Validate
-        run: terraform validate
-
+          echo `pwd`
+          echo "** Running Terraform Init**"
+          terraform init -upgrade
+          echo "** Terraform Version***"
+          terraform -v
+          echo "** Running Terraform Validate**"
+          terraform validate
       - name: Terraform Plan
-        id: plan
         run: |
-          terraform plan -out=./tfplan -json > tfplan.json
-
-      - name: Debug tfplan.json
-        run: cat tfplan.json  # Print the contents of tfplan.json to the logs
-
-      - name: OPA Policy Check
-        id: opa_check
-        run: |
-          opa eval --data policies/s3_tag_policy.rego --input tfplan.json "data.s3_bucket.allow" > result.json
-    cat result.json  # Print the OPA evaluation result for debugging
-    if [[ $(jq '.result[0].expressions[0].value' result.json) == "false" ]]; then
-      echo "Policy violation detected!"
-      exit 1  # Exit the workflow with an error if policy denies
-    else
-      echo "No policy violation detected."
-    fi
+          echo "** Running Terraform Plan**"
+          terraform plan -out=./tfplan
       - name: Terraform Apply
         run: |
+          echo "** Running Terraform Apply**"
           terraform apply -auto-approve ./tfplan
-
   terraform-destroy:
     if: ${{ github.event.inputs.destroy == 'true' }}
     runs-on: ubuntu-latest
+    #needs: terraform-create
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
@@ -98,32 +74,30 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up AWS Creds
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_DEFAULT_REGION }}
-
-      - name: Install Terraform
+          # profile-name: ACCPL-Network
+      - name: Install dependencies
         uses: hashicorp/setup-terraform@v2
-        
-      - name: Install OPA
+      - name: Terraform Init
         run: |
-          wget https://openpolicyagent.org/downloads/v0.41.0/opa_linux_amd64 -O opa
-          chmod +x opa
-          sudo mv opa /usr/local/bin/opa
-
-      - name: Terraform Init with S3 Backend
+          echo `pwd`
+          echo "** Running Terraform Init**"
+          terraform init -upgrade
+          echo "** Terraform Version**"
+          terraform -v
+          echo "** Running Terraform Validate**"
+          terraform validate
+      - name: Terraform Plan
         run: |
-          terraform init -backend-config="bucket=bucket241011" \
-                         -backend-config="key=terraform.tfstate" \
-                         -backend-config="region=${{ github.event.inputs.region }}" \
-                         -upgrade
+          echo "** Running Terraform Plan**"
+          terraform plan -destroy -out=./tfplan
+      - name: Terraform Apply
+        run: |
+          echo "** Running Terraform Apply**"
+          terraform apply -auto-approve ./tfplan
 
-      - name: Terraform Plan (Destroy)
-        run: terraform plan -destroy -out=./tfplan
-
-      - name: Terraform Apply (Destroy)
-        run: terraform apply -auto-approve ./tfplan
