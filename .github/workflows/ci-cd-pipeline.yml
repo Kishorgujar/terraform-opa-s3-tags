@@ -75,7 +75,10 @@ jobs:
 
       - name: Debug Tags
         run: |
-          jq '.resource_changes[] | {type: .type, tags: .change.after.tags}' tfplan.json
+          if ! jq '.resource_changes[] | {type: .type, tags: .change.after.tags}' tfplan.json; then
+            echo "Failed to parse tfplan.json for resource tags."
+            exit 1
+          fi
 
       - name: OPA Policy Check
         id: opa_check
