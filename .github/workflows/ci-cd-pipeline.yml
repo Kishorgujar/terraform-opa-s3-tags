@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:  # Allow manual triggering of the workflow
 
 jobs:
   check-policy:
@@ -34,4 +35,5 @@ jobs:
           opa eval --data policies/s3_tag_policy.rego --input input.json "data.example.s3.allow" || exit 1
 
       - name: Policy Check Passed
+        if: success()  # This will run only if the previous step succeeded
         run: echo "Policy check passed!"
