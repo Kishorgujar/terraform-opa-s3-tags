@@ -77,18 +77,26 @@ jobs:
         id: opa_check
         run: |
           opa eval --data policies/s3_tag_policy.rego --input tfplan.json "data.s3_bucket.allow" > result.json
-          cat result.json  # Print the OPA evaluation result for debugging
 
-          # Extract relevant fields for debugging
-          tags=$(jq '.planned_values.root_module.resources[0].values.tags' tfplan.json)
-          echo "Evaluating with tags: $tags"
+      - name: Print OPA Result
+        run: cat result.json  # Print the OPA evaluation result for debugging
 
+      - name: Ensure valid JSON
+        run: |
+          if ! jq empty result.json; then
+            echo "Invalid JSON output from OPA."
+            exit 1
+          fi
+
+      - name: Extract evaluation result
+        run: |
           if [[ $(jq '.result[0].expressions[0].value' result.json) == "false" ]]; then
             echo "Policy violation detected!"
             exit 1  # Exit the workflow with an error if policy denies
           else
             echo "No policy violation detected."
           fi
+
       - name: Terraform Apply
         run: |
           terraform apply -auto-approve ./tfplan
@@ -132,4 +140,3 @@ jobs:
 
       - name: Terraform Apply (Destroy)
         run: terraform apply -auto-approve ./tfplan
-
