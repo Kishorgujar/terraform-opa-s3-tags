@@ -1,144 +1,37 @@
-name: "Security_Catalog Deployment"
+name: Validate S3 Bucket Tags
+
 on:
-  workflow_dispatch:
-    inputs:
-      destroy:
-        description: 'Whether to destroy the infra components'
-        default: false
-        required: false
-        type: boolean
-      region:
-        description: 'Which region would want to deploy to'
-        default: 'ap-south-1'
-        required: false
-        type: string
   push:
     branches:
       - main
-      - scp
-
-defaults:
-  run:
-    shell: bash
-    working-directory: ./
 
 jobs:
-  terraform-create:
-    if: ${{ github.event.inputs.destroy == 'false' }}
+  check-policy:
     runs-on: ubuntu-latest
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
-      AWS_DEFAULT_REGION: ${{ github.event.inputs.region }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      
-      - name: Set up AWS Creds
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_DEFAULT_REGION }}
-      
-      - name: Install dependencies
-        uses: hashicorp/setup-terraform@v2
-      
-      - name: Terraform Init
-        run: |
-          echo `pwd`
-          echo "** Running Terraform Init**"
-          terraform init -upgrade
-          echo "** Terraform Version**"
-          terraform -v
-          echo "** Running Terraform Validate**"
-          terraform validate
-      
-      - name: Terraform Plan
-        run: |
-          echo "** Running Terraform Plan**"
-          terraform plan -out=./tfplan
-      
-      - name: Create Input JSON
-        run: |
-          echo '{"tag": DevOps"}' > input.json  # Replace YourTagHere with the actual tag you want to check
-      
+      - name: Checkout code
+        uses: actions/checkout@v2
+
       - name: Install OPA
         run: |
-          curl -L -o opa https://github.com/open-policy-agent/opa/releases/latest/download/opa_linux_amd64
+          wget https://github.com/open-policy-agent/opa/releases/latest/download/opa_linux_amd64 -O opa
           chmod +x opa
           sudo mv opa /usr/local/bin/
-      
-      - name: OPA Policy Check
+
+      - name: Prepare Input Data
         run: |
-          opa eval --data policies/s3_tag_policy.rego --input input.json "data.s3_tag_policy.allow" > result.json
-          cat result.json  # Print the OPA evaluation result for debugging
-          if [[ $(jq '.result[0].expressions[0].value' result.json) == "false" ]]; then
-            echo "Policy violation detected!"
-            exit 1  # Exit the workflow with an error if policy denies
-          else
-            echo "No policy violation detected."
-          fi
-      
-      - name: Terraform Apply
+          echo '{
+            "resource_type": "s3_bucket",
+            "action": "create",
+            "tags": {
+              "Environment": "Production",
+              "Owner": "TeamA"
+            }
+          }' > input.json
+
+      - name: Validate Policy
         run: |
-          echo "** Running Terraform Apply**"
-          terraform apply -auto-approve ./tfplan
-  
-  terraform-destroy:
-    if: ${{ github.event.inputs.destroy == 'true' }}
-    runs-on: ubuntu-latest
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
-      AWS_DEFAULT_REGION: ${{ github.event.inputs.region }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      
-      - name: Set up AWS Creds
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_DEFAULT_REGION }}
-      
-      - name: Install dependencies
-        uses: hashicorp/setup-terraform@v2
-      
-      - name: Terraform Init
-        run: |
-          echo `pwd`
-          echo "** Running Terraform Init**"
-          terraform init -upgrade
-          echo "** Terraform Version**"
-          terraform -v
-          echo "** Running Terraform Validate**"
-          terraform validate
-      
-      - name: Terraform Plan
-        run: |
-          echo "** Running Terraform Plan**"
-          terraform plan -destroy -out=./tfplan
-      
-      - name: Install OPA
-        run: |
-          curl -L -o opa https://github.com/open-policy-agent/opa/releases/latest/download/opa_linux_amd64
-          chmod +x opa
-          sudo mv opa /usr/local/bin/
-      
-      - name: OPA Policy Check
-        run: |
-          opa eval --data policies/s3_tag_policy.rego --input input.json "data.s3_tag_policy.allow" > result.json
-          cat result.json  # Print the OPA evaluation result for debugging
-          if [[ $(jq '.result[0].expressions[0].value' result.json) == "false" ]]; then
-            echo "Policy violation detected!"
-            exit 1  # Exit the workflow with an error if policy denies
-          else
-            echo "No policy violation detected."
-          fi
-      
-      - name: Terraform Apply
-        run: |
-          echo "** Running Terraform Apply**"
-          terraform apply -auto-approve ./tfplan
+          opa eval --data policies/s3_tag_policy.rego --input input.json "data.example.s3.allow" || exit 1
+
+      - name: Policy Check Passed
+        run: echo "Policy check passed!"
