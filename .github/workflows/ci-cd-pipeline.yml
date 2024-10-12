@@ -69,7 +69,10 @@ jobs:
         id: plan
         run: |
           terraform plan -out=tfplan -json
-          terraform show -json tfplan > tfplan.json || { echo "Failed to generate tfplan.json"; exit 1; }
+          # Try to generate tfplan.json with retries
+          for i in {1..3}; do
+            terraform show -json tfplan > tfplan.json && break || sleep 5
+          done
 
       - name: Check tfplan.json Validity
         run: |
