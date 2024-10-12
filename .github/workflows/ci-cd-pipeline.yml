@@ -82,7 +82,9 @@ jobs:
 
       - name: Debug Tags
         run: |
-          if ! jq '.resource_changes[] | {type: .type, tags: .change.after.tags}' tfplan.json; then
+          if jq -e '.resource_changes[] | {type: .type, tags: .change.after.tags}' tfplan.json; then
+            jq '.resource_changes[] | {type: .type, tags: .change.after.tags}' tfplan.json
+          else
             echo "Failed to parse tfplan.json for resource tags."
             exit 1
           fi
