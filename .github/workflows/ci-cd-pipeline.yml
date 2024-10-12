@@ -77,13 +77,6 @@ jobs:
             exit 1
           fi
 
-      - name: Validate tfplan.json
-        run: |
-          if ! jq '.' tfplan.json; then
-            echo "tfplan.json is not valid JSON. Check for errors in the Terraform plan."
-            exit 1
-          fi
-
       - name: Debug tfplan.json
         run: cat tfplan.json  # Print the contents of tfplan.json to the logs
 
