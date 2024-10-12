@@ -73,6 +73,13 @@ jobs:
       - name: Debug tfplan.json
         run: cat tfplan.json  # Print the contents of tfplan.json to the logs
 
+      - name: Check JSON Structure
+        run: |
+          if ! jq '.' tfplan.json; then
+            echo "tfplan.json is not valid JSON."
+            exit 1
+          fi
+
       - name: Debug Tags
         run: |
           if ! jq '.resource_changes[] | {type: .type, tags: .change.after.tags}' tfplan.json; then
