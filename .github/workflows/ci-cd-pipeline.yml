@@ -68,7 +68,9 @@ jobs:
       - name: Terraform Plan
         id: plan
         run: |
-          terraform plan -out=./tfplan -json | tee tfplan.json
+          terraform plan -out=tfplan -json
+          terraform show -json tfplan > tfplan.json
+          opa eval --data policies/s3_tag_policy.rego --input tfplan.json "data.s3_bucket.allow" > result.json
 
       - name: Debug tfplan.json
         run: cat tfplan.json  # Print the contents of tfplan.json to the logs
@@ -86,11 +88,6 @@ jobs:
             echo "Failed to parse tfplan.json for resource tags."
             exit 1
           fi
-
-      - name: OPA Policy Check
-        id: opa_check
-        run: |
-          opa eval --data policies/s3_tag_policy.rego --input tfplan.json "data.s3_bucket.allow" > result.json
 
       - name: Print OPA Result
         run: cat result.json  # Print the OPA evaluation result for debugging
@@ -113,7 +110,7 @@ jobs:
 
       - name: Terraform Apply
         run: |
-          terraform apply -auto-approve ./tfplan
+          terraform apply -auto-approve tfplan
 
   terraform-destroy:
     if: ${{ github.event.inputs.destroy == 'true' }}
@@ -150,7 +147,7 @@ jobs:
                          -upgrade
 
       - name: Terraform Plan (Destroy)
-        run: terraform plan -destroy -out=./tfplan
+        run: terraform plan -destroy -out=tfplan
 
       - name: Terraform Apply (Destroy)
-        run: terraform apply -auto-approve ./tfplan
+        run: terraform apply -auto-approve tfplan
