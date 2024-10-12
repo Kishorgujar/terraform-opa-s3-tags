@@ -70,17 +70,16 @@ jobs:
         run: |
           terraform plan -out=tfplan -json
           terraform show -json tfplan > tfplan.json
-          opa eval --data policies/s3_tag_policy.rego --input tfplan.json "data.s3_bucket.allow" > result.json
 
-      - name: Debug tfplan.json
-        run: cat tfplan.json  # Print the contents of tfplan.json to the logs
-
-      - name: Check JSON Structure
+      - name: Check tfplan.json Validity
         run: |
           if ! jq '.' tfplan.json; then
             echo "tfplan.json is not valid JSON."
             exit 1
           fi
+
+      - name: Debug tfplan.json
+        run: cat tfplan.json  # Print the contents of tfplan.json to the logs
 
       - name: Debug Tags
         run: |
@@ -88,6 +87,11 @@ jobs:
             echo "Failed to parse tfplan.json for resource tags."
             exit 1
           fi
+
+      - name: OPA Policy Check
+        id: opa_check
+        run: |
+          opa eval --data policies/s3_tag_policy.rego --input tfplan.json "data.s3_bucket.allow" > result.json
 
       - name: Print OPA Result
         run: cat result.json  # Print the OPA evaluation result for debugging
@@ -150,4 +154,5 @@ jobs:
         run: terraform plan -destroy -out=tfplan
 
       - name: Terraform Apply (Destroy)
-        run: terraform apply -auto-approve tfplan
+        run: |
+          terraform apply -auto-approve tfplan
