@@ -127,7 +127,7 @@ jobs:
       - name: OPA Policy Check
         run: |
           echo "** Running OPA Policy Check (Destroy)**"
-          opa eval --data your_policy.rego --input tfplan.json "data.s3_bucket.allow" | tee result.json
+          opa eval --data s3_tag_policy.rego --input tfplan.json "data.s3_bucket.allow" | tee result.json
           if grep -q 'false' result.json; then
             echo "Policy check failed: Denied by OPA policy"
             exit 1
