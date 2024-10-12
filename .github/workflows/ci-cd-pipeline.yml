@@ -65,12 +65,18 @@ jobs:
           echo "** Running Terraform Plan**"
           terraform plan -out=./tfplan
           terraform show -json ./tfplan > tfplan.json
-
+          
       - name: OPA Policy Check
         id: opa_check
         run: |
           opa eval --data policies/s3_tag_policy.rego --input tfplan.json "data.s3_bucket.allow" > result.json
-
+          cat result.json  # Print the OPA evaluation result for debugging
+          if [[ $(jq '.result[0].expressions[0].value' result.json) == "false" ]]; then
+            echo "Policy violation detected!"
+            exit 1  # Exit the workflow with an error if policy denies
+          else
+            echo "No policy violation detected."
+          fi
       - name: Terraform Apply
         run: |
           echo "** Running Terraform Apply**"
@@ -121,12 +127,15 @@ jobs:
           terraform show -json ./tfplan > tfplan.json
 
       - name: OPA Policy Check
+        id: opa_check
         run: |
-          echo "** Running OPA Policy Check (Destroy)**"
-          opa eval --data s3_tag_policy.rego --input tfplan.json "data.s3_bucket.allow" | tee result.json
-          if grep -q 'false' result.json; then
-            echo "Policy check failed: Denied by OPA policy"
-            exit 1
+          opa eval --data policies/s3_tag_policy.rego --input tfplan.json "data.s3_bucket.allow" > result.json
+          cat result.json  # Print the OPA evaluation result for debugging
+          if [[ $(jq '.result[0].expressions[0].value' result.json) == "false" ]]; then
+            echo "Policy violation detected!"
+            exit 1  # Exit the workflow with an error if policy denies
+          else
+            echo "No policy violation detected."
           fi
 
       - name: Terraform Apply
