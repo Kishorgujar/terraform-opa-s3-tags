@@ -62,7 +62,14 @@ jobs:
           sudo mv opa /usr/local/bin/
       - name: OPA Policy Check
         run: |
-          opa eval --data policies/s3_tag_policy.rego --input input.json "data.s3_tag_policy.allow"
+          opa eval --data policies/s3_tag_policy.rego --input input.json "data.s3_tag_policy.allow" > result.json
+          cat result.json  # Print the OPA evaluation result for debugging
+          if [[ $(jq '.result[0].expressions[0].value' result.json) == "false" ]]; then
+            echo "Policy violation detected!"
+            exit 1  # Exit the workflow with an error if policy denies
+          else
+            echo "No policy violation detected."
+          fi
       - name: Terraform Apply
         run: |
           echo "** Running Terraform Apply**"
@@ -108,7 +115,14 @@ jobs:
           sudo mv opa /usr/local/bin/
       - name: OPA Policy Check
         run: |
-          opa eval --data policies/s3_tag_policy.rego --input input.json "data.s3_tag_policy.allow"
+          opa eval --data policies/s3_tag_policy.rego --input input.json "data.s3_tag_policy.allow" > result.json
+          cat result.json  # Print the OPA evaluation result for debugging
+          if [[ $(jq '.result[0].expressions[0].value' result.json) == "false" ]]; then
+            echo "Policy violation detected!"
+            exit 1  # Exit the workflow with an error if policy denies
+          else
+            echo "No policy violation detected."
+          fi
       - name: Terraform Apply
         run: |
           echo "** Running Terraform Apply**"
