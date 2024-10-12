@@ -72,6 +72,9 @@ jobs:
 
       - name: Debug tfplan.json
         run: cat tfplan.json  # Print the contents of tfplan.json to the logs
+      - name: Debug Tags
+        run: |
+         jq '.resource_changes[] | {type: .type, tags: .change.after.tags}' tfplan.json
 
       - name: OPA Policy Check
         id: opa_check
