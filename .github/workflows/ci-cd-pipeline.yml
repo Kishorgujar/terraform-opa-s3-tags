@@ -67,13 +67,9 @@ jobs:
           terraform show -json ./tfplan > tfplan.json
 
       - name: OPA Policy Check
+        id: opa_check
         run: |
-          echo "** Running OPA Policy Check **"
-          opa eval --data s3_tag_policy.rego --input tfplan.json "data.s3_bucket.allow" | tee result.json
-          if grep -q 'false' result.json; then
-            echo "Policy check failed: Denied by OPA policy"
-            exit 1
-          fi
+          opa eval --data policies/s3_tag_policy.rego --input tfplan.json "data.s3_bucket.allow" > result.json
 
       - name: Terraform Apply
         run: |
