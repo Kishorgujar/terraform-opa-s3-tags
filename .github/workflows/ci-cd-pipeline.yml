@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:  # Allow manual triggering
 
 jobs:
   terraform:
@@ -16,7 +17,7 @@ jobs:
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v2.0.0
         with:
-          terraform_version: 1.4.5  # Specify the Terraform version you need
+          terraform_version: 1.4.5
 
       - name: Terraform Init
         run: terraform init
@@ -37,9 +38,6 @@ jobs:
 
       - name: Check Policy with OPA
         run: |
-          # Install OPA
           wget https://github.com/open-policy-agent/opa/releases/latest/download/opa_linux_amd64 -O opa
           chmod +x opa
-
-          # Run OPA against the policy.rego and Terraform plan output
           opa eval --input tfplan --data policy.rego "data.s3_bucket.allow"
