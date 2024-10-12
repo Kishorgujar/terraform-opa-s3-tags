@@ -2,19 +2,26 @@ package s3_bucket
 
 default allow = false
 
-# Allow operation if it's not modifying tags
+# Allow creation of the bucket only if the tags match the required value
+allow {
+    input.resource_changes[_].type == "aws_s3_bucket"
+    input.resource_changes[_].change.after.tags["Environment"] == "DevOps"
+}
+
+# Allow operations that are not modifying tags
 allow {
     input.operation != "PutBucketTagging"
 }
 
-# Allow operation if trying to modify tags and they match the required values
+# Allow modification of tags only if they match the required value
 allow {
     input.operation == "PutBucketTagging"
-    input.tags["Environment"] == "DevOps"
+    input.resource_changes[_].change.after.tags["Environment"] == "DevOps"
 }
 
-# Deny operation if trying to modify tags and they do not match the required values
+# Deny operations that try to modify tags when they don't match the required value
 deny {
     input.operation == "PutBucketTagging"
-    input.tags["Environment"] != "DevOps"
+    input.resource_changes[_].change.after.tags["Environment"] != "DevOps"
 }
+
