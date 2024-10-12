@@ -80,7 +80,11 @@ jobs:
 
       - name: Debug Tags
         run: |
-          jq '.resource_changes[] | {type: .type, tags: .change.after.tags}' tfplan.json || echo "No tags found or invalid JSON."
+          if [ -f tfplan.json ]; then
+            jq '.resource_changes[]? | {type: .type, tags: .change.after.tags}' tfplan.json || echo "No tags found or invalid JSON."
+          else
+            echo "tfplan.json not found."
+          fi
 
       - name: OPA Policy Check
         id: opa_check
