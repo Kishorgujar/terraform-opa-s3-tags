@@ -21,6 +21,6 @@ resource "aws_s3_bucket" "my_bucket" {
   bucket = "mainbucket241011"
   
   tags = {
-    Environment = "DevOps"  # Example of a tag for testing
+    Environment = "UAT"  # Example of a tag for testing
   }
 }
